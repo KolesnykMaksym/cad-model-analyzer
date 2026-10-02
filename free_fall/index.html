@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Гранична швидкість падіння</title>
+<meta name="description" content="Розрахунок і візуалізація вільного падіння тіла з опором повітря: гранична швидкість, сили, порівняння тіл.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Макет: панель параметрів ліворуч (липка на десктопі), праворуч головне число, показники, графіки; нижче порівняння тіл і формули. */
+:root {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --sunken: #e9edf1;
+  --ink: #0f1820;
+  --ink-2: #4f5b66;
+  --ink-3: #75808a;
+  --line: #d9e0e6;
+  --accent: #0d6670;
+  --accent-ink: #ffffff;
+  --warn: #9a5b00;
+  --warn-bg: #fff3dc;
+  --crit: #b3261e;
+  --crit-bg: #fde7e5;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+  --ref: #5c6670;
+  --font-display: "Unbounded", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1216; --surface: #141b20; --sunken: #1b242b; --ink: #e7edf1; --ink-2: #a6b2bc; --ink-3: #7f8b95;
+    --line: #26313a; --accent: #4fb5bc; --accent-ink: #06191b; --warn: #f0b04a; --warn-bg: #33270f;
+    --crit: #f2867e; --crit-bg: #3a1714;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+    --ref: #a6b2bc;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1216; --surface: #141b20; --sunken: #1b242b; --ink: #e7edf1; --ink-2: #a6b2bc; --ink-3: #7f8b95;
+  --line: #26313a; --accent: #4fb5bc; --accent-ink: #06191b; --warn: #f0b04a; --warn-bg: #33270f;
+  --crit: #f2867e; --crit-bg: #3a1714;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --ref: #a6b2bc;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+}
+.wrap { max-width: 1320px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; }
+@media (min-width: 720px) { .wrap { padding-inline: 28px; } }
+
+header.top { display: grid; gap: 6px; margin-bottom: 24px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 4vw, 40px); line-height: 1.1; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.lead { margin: 4px 0 0; color: var(--ink-2); max-width: 68ch; }
+h2 { font-family: var(--font-display); font-weight: 500; font-size: 19px; margin: 0; text-wrap: balance; }
+h3 { font-size: 14px; font-weight: 600; margin: 0; }
+
+.layout { display: grid; gap: 24px; }
+@media (min-width: 1000px) {
+  .layout { grid-template-columns: 340px minmax(0, 1fr); align-items: start; }
+  .controls { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); max-height: calc(100vh - 32px); overflow-y: auto; }
+}
+
+/* Панель параметрів */
+.controls { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 18px; }
+fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 10px; min-width: 0; }
+legend { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); padding: 0; margin-bottom: 8px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label, .lbl { font-size: 13px; color: var(--ink-2); }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.with-unit { display: flex; gap: 6px; }
+.with-unit input { flex: 1; min-width: 0; }
+.with-unit select { flex: 0 0 auto; width: auto; }
+input[type="number"], select {
+  width: 100%; font: inherit; font-family: var(--font-mono); font-size: 14px;
+  color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 7px 9px;
+}
+select { font-family: var(--font-body); }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input[aria-invalid="true"] { border-color: var(--crit); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+button { font: inherit; cursor: pointer; }
+.chip {
+  font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--ink);
+}
+.chip:hover { border-color: var(--accent); }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.link-btn { background: none; border: 0; color: var(--accent); padding: 0; font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px; }
+.derived { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 13px; background: var(--sunken); border-radius: 7px; padding: 10px 12px; }
+.derived dt { color: var(--ink-2); }
+.derived dd { margin: 0; font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.toggle { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
+.toggle input { margin-top: 3px; accent-color: var(--accent); width: 16px; height: 16px; flex: 0 0 auto; }
+.toggle small { display: block; color: var(--ink-3); font-size: 12.5px; }
+.primary {
+  background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px; padding: 10px 14px; font-weight: 600;
+}
+.primary:disabled { opacity: .5; cursor: not-allowed; }
+.form-error { color: var(--crit); font-size: 13px; margin: 0; }
+.hint { font-size: 12.5px; color: var(--ink-3); margin: 0; }
+
+/* Результати */
+.results { display: grid; gap: 20px; min-width: 0; }
+.hero {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 22px; display: grid; gap: 14px;
+}
+@media (min-width: 760px) { .hero { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 32px; } }
+.hero-num { display: grid; gap: 2px; }
+.hero-num .lbl { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.big { font-family: var(--font-display); font-weight: 700; font-size: clamp(44px, 7vw, 68px); line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.big small { font-size: .38em; font-weight: 500; letter-spacing: 0; margin-left: 6px; color: var(--ink-2); }
+.big-sub { font-family: var(--font-mono); color: var(--ink-2); font-size: 15px; }
+.hero-text { display: grid; gap: 10px; min-width: 0; }
+.hero-text p { margin: 0; max-width: 64ch; }
+.body-name { font-weight: 600; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 3px 10px; border-radius: 999px; width: fit-content; }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.pill.crit { background: var(--crit-bg); color: var(--crit); }
+.pill svg { width: 14px; height: 14px; flex: 0 0 auto; }
+
+.stats { display: grid; grid-template-columns: 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+@media (min-width: 560px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.stat { background: var(--surface); padding: 12px 14px; display: grid; gap: 2px; align-content: start; }
+.stat .k { font-size: 12.5px; color: var(--ink-2); }
+.stat .v { font-family: var(--font-mono); font-size: 19px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.stat .s { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+.charts { display: grid; gap: 16px; }
+@media (min-width: 1180px) { .charts { grid-template-columns: 1fr 1fr; } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.card header { display: grid; gap: 2px; }
+.card header p { margin: 0; font-size: 13px; color: var(--ink-2); }
+.plot { position: relative; height: 290px; width: 100%; }
+.plot.tall { height: 380px; }
+.wide { grid-column: 1 / -1; }
+
+section.block { margin-top: 36px; display: grid; gap: 16px; }
+.block-head { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: end; justify-content: space-between; }
+.block-head p { margin: 4px 0 0; color: var(--ink-2); max-width: 70ch; }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 820px; }
+th, td { padding: 9px 12px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th { font-weight: 500; color: var(--ink-2); font-size: 12.5px; background: var(--sunken); }
+td { font-family: var(--font-mono); }
+th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+td:nth-child(2) { font-family: var(--font-body); }
+tr:last-child td { border-bottom: 0; }
+.swatch { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; }
+.rm { background: none; border: 1px solid var(--line); color: var(--ink-2); border-radius: 6px; padding: 2px 8px; font-size: 12.5px; }
+.rm:hover { border-color: var(--crit); color: var(--crit); }
+td.vt { font-weight: 500; color: var(--ink); }
+
+.theory { display: grid; gap: 16px; }
+@media (min-width: 900px) { .theory { grid-template-columns: 1fr 1fr; } }
+.theory .card p, .theory .card li { color: var(--ink-2); font-size: 14px; max-width: 70ch; }
+.theory ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.formula { font-family: var(--font-mono); font-size: 13.5px; background: var(--sunken); border-radius: 7px; padding: 10px 12px; overflow-x: auto; white-space: pre; color: var(--ink); }
+.cdn-error { background: var(--crit-bg); color: var(--crit); padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">Аеродинаміка вільного падіння</span>
+    <h1>Гранична швидкість падіння</h1>
+    <p class="lead">Задайте тіло й висоту. Програма інтегрує рівняння руху з опором повітря, архімедовою силою, стандартною атмосферою та змінним g і показує, на якій швидкості опір урівноважує вагу.</p>
+  </header>
+
+  <div class="layout">
+    <form class="controls" id="controls" novalidate>
+      <fieldset>
+        <legend>Тіло</legend>
+        <div class="field">
+          <label for="preset">Готове тіло</label>
+          <select id="preset"></select>
+        </div>
+        <div class="field">
+          <label for="shape">Форма</label>
+          <select id="shape"></select>
+        </div>
+        <div id="dims-box" class="row"></div>
+        <div id="custom-box" class="row" hidden>
+          <div class="field">
+            <label for="cA">Площа міделя A, м²</label>
+            <input type="number" id="cA" step="any" min="0" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label for="cV">Об’єм V, м³</label>
+            <input type="number" id="cV" step="any" min="0" inputmode="decimal">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="mass">Маса</label>
+            <div class="with-unit">
+              <input type="number" id="mass" step="any" min="0" inputmode="decimal">
+              <select id="massUnit" aria-label="Одиниця маси">
+                <option value="1e-6">мг</option>
+                <option value="1e-3">г</option>
+                <option value="1">кг</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="cd">Коефіцієнт опору Cd</label>
+            <input type="number" id="cd" step="any" min="0" inputmode="decimal">
+            <button type="button" class="link-btn" id="cdReset">Типовий для форми</button>
+          </div>
+        </div>
+        <dl class="derived" id="derived"></dl>
+      </fieldset>
+
+      <fieldset>
+        <legend>Умови падіння</legend>
+        <div class="field">
+          <label for="H">Висота падіння над землею, м</label>
+          <input type="number" id="H" step="any" min="0" inputmode="decimal">
+        </div>
+        <div class="chips" id="hChips" role="group" aria-label="Швидкий вибір висоти"></div>
+        <div class="row">
+          <div class="field">
+            <label for="ground">Земля над рівнем моря, м</label>
+            <input type="number" id="ground" step="any" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label for="v0">Початкова швидкість, м/с</label>
+            <input type="number" id="v0" step="any" min="0" inputmode="decimal">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Ефекти моделі</legend>
+        <label class="toggle"><input type="checkbox" id="o-isa" checked><span>Стандартна атмосфера ISA<small>Густина, температура й в’язкість змінюються з висотою. Вимкнено: значення на рівні землі.</small></span></label>
+        <label class="toggle"><input type="checkbox" id="o-gravity" checked><span>g залежить від висоти<small>g(h) = g₀·(R/(R+h))². Вимкнено: g₀ = 9.80665 м/с².</small></span></label>
+        <label class="toggle"><input type="checkbox" id="o-buoyancy" checked><span>Архімедова сила<small>Виштовхування витісненим повітрям, ρ·V·g.</small></span></label>
+        <label class="toggle"><input type="checkbox" id="o-viscous" checked><span>В’язкий опір Стокса<small>3π·μ·d·v. Важливий для крапель і пилу.</small></span></label>
+      </fieldset>
+
+      <p class="form-error" id="formError" hidden></p>
+      <button type="button" class="primary" id="addCompare">Додати до порівняння</button>
+      <p class="hint" id="addHint">До 8 тіл падають з однієї висоти на графіку нижче.</p>
+    </form>
+
+    <div class="results">
+      <div id="cdnError" class="cdn-error" hidden>Не вдалося завантажити бібліотеку графіків Chart.js з cdnjs. Розрахунки працюють, але для графіків потрібне з’єднання з інтернетом.</div>
+
+      <section class="hero" aria-live="polite">
+        <div class="hero-num">
+          <span class="lbl">Гранична швидкість біля землі</span>
+          <div class="big" id="heroV">—</div>
+          <div class="big-sub" id="heroKmh"></div>
+        </div>
+        <div class="hero-text" id="heroText"></div>
+      </section>
+
+      <div class="stats" id="stats"></div>
+
+      <div class="charts">
+        <article class="card">
+          <header><h3>Швидкість у часі</h3><p>Крива v(t) наближається до локальної граничної швидкості</p></header>
+          <div class="plot"><canvas id="cVT" role="img" aria-label="Графік швидкості від часу"></canvas></div>
+        </article>
+        <article class="card">
+          <header><h3>Швидкість за висотою</h3><p>Висота над землею зменшується зліва направо</p></header>
+          <div class="plot"><canvas id="cVH" role="img" aria-label="Графік швидкості від висоти"></canvas></div>
+        </article>
+        <article class="card">
+          <header><h3>Висота в часі</h3><p>h(t) з опором і без нього</p></header>
+          <div class="plot"><canvas id="cHT" role="img" aria-label="Графік висоти від часу"></canvas></div>
+        </article>
+        <article class="card">
+          <header><h3>Прискорення</h3><p>a(t) прямує до нуля, коли настає рівновага сил</p></header>
+          <div class="plot"><canvas id="cAcc" role="img" aria-label="Графік прискорення від часу"></canvas></div>
+        </article>
+        <article class="card wide">
+          <header><h3>Сили, що діють на тіло</h3><p>У рівновазі сумарний опір дорівнює вазі мінус архімедова сила</p></header>
+          <div class="plot"><canvas id="cF" role="img" aria-label="Графік сил від часу"></canvas></div>
+        </article>
+      </div>
+    </div>
+  </div>
+
+  <section class="block" id="compare">
+    <div class="block-head">
+      <div>
+        <h2>Порівняння тіл</h2>
+        <p id="compareSub">Кожне тіло падає з тієї ж висоти за тих самих умов. Кольори закріплені за тілом.</p>
+      </div>
+      <div class="chips">
+        <button type="button" class="chip" id="logToggle" aria-pressed="true">Логарифмічні осі</button>
+        <button type="button" class="chip" id="resetCompare">Типовий набір</button>
+      </div>
+    </div>
+    <article class="card">
+      <div class="plot tall"><canvas id="cCmp" role="img" aria-label="Порівняння швидкості різних тіл"></canvas></div>
+    </article>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col"></th><th scope="col">Тіло</th><th scope="col">Маса</th><th scope="col">Cd·A, м²</th>
+            <th scope="col">v<sub>t</sub>, м/с</th><th scope="col">v<sub>t</sub>, км/год</th>
+            <th scope="col">95 % v<sub>t</sub> за</th><th scope="col">і за висоту</th>
+            <th scope="col">Час падіння</th><th scope="col">Удар, м/с</th><th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody id="cmpBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Як це рахується</h2>
+    <div class="theory">
+      <article class="card">
+        <h3>Рівняння руху</h3>
+        <div class="formula">m·dv/dt = m·g(h) − ρ(h)·V·g(h)
+         − ½·ρ(h)·Cd·A·v² − 3π·μ(h)·d·v
+dh/dt = −v</div>
+        <p>Перший доданок — вага, другий — архімедова сила, третій — квадратичний (інерційний) опір, четвертий — в’язкий опір Стокса. d = √(4A/π) — діаметр кола з площею міделя A.</p>
+        <h3>Гранична швидкість</h3>
+        <div class="formula">½ρCdA·v² + 3πμd·v = (m − ρV)·g
+v_t ≈ √( 2mg / (ρ·Cd·A) )   (великі тіла)
+v_t ≈ (m − ρV)·g / (3πμd)   (дрібні краплі)</div>
+        <p>Коли швидкість дорівнює v<sub>t</sub>, сума сил нульова, прискорення зникає і тіло далі летить рівномірно. Час виходу на режим має порядок τ = v<sub>t</sub>/(2g): для парашутиста це близько 3 с, для краплі мряки — соті частки секунди.</p>
+      </article>
+      <article class="card">
+        <h3>Атмосфера і числові методи</h3>
+        <ul>
+          <li>Температура, тиск і густина — стандартна атмосфера ISA (US Standard Atmosphere 1976), 7 шарів до 86 км, з поправкою на геопотенціальну висоту. Розрахунок обмежено висотою 80 км.</li>
+          <li>В’язкість повітря — формула Сазерленда: μ = 1.458·10⁻⁶·T<sup>1.5</sup>/(T + 110.4).</li>
+          <li>g(h) = 9.80665·(R/(R+h))², R = 6371 км.</li>
+          <li>Через рідше повітря вгорі v<sub>t</sub> на висоті більша, ніж біля землі. Тіло зі стратосфери може перевищити локальну граничну швидкість, а потім гальмувати в щільніших шарах.</li>
+          <li>Інтегрування методом Рунге — Кутти 4-го порядку з кроком, прив’язаним до τ. Після того як швидкість збіглася з v<sub>t</sub>(h) з точністю 10⁻⁶, тіло рухається з v = v<sub>t</sub>(h) (режим квазірівноваги).</li>
+          <li>Cd вважається сталим. Поблизу швидкості звуку (М &gt; 0.8) опір зростає, тому там результат наближений. Тіло не обертається й не планує.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="physics.js"></script>
+<script>
+(function () {
+  'use strict';
+  const FF = window.FreeFall;
+  const hasChart = typeof window.Chart !== 'undefined';
+  const $ = (id) => document.getElementById(id);
+
+  // ---------- Форматування ----------
+  const nf = (digits) => new Intl.NumberFormat('uk-UA', { maximumFractionDigits: digits, minimumFractionDigits: 0 });
+  function num(x, sig = 3) {
+    if (!isFinite(x)) return '—';
+    if (x === 0) return '0';
+    const ax = Math.abs(x);
+    if (ax >= 1e6 || ax < 1e-3) {
+      const [m, e] = x.toExponential(sig - 1).split('e');
+      return m.replace('.', ',') + '·10' + toSup(+e);
+    }
+    const d = Math.max(0, sig - 1 - Math.floor(Math.log10(ax)));
+    return nf(Math.min(d, 6)).format(x);
+  }
+  function toSup(n) {
+    const map = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
+    return String(n).split('').map((c) => map[c]).join('');
+  }
+  function time(s) {
+    if (!isFinite(s)) return '—';
+    if (s < 120) return num(s, s < 10 ? 3 : 3) + ' с';
+    const m = Math.floor(s / 60), r = Math.round(s - m * 60);
+    if (m < 60) return m + ' хв ' + r + ' с';
+    return Math.floor(m / 60) + ' год ' + (m % 60) + ' хв';
+  }
+  function dist(m) {
+    if (!isFinite(m)) return '—';
+    return m >= 10000 ? num(m / 1000, 3) + ' км' : num(m, 3) + ' м';
+  }
+  function mass(kg) {
+    if (kg >= 1) return num(kg, 3) + ' кг';
+    if (kg >= 1e-3) return num(kg * 1e3, 3) + ' г';
+    return num(kg * 1e6, 3) + ' мг';
+  }
+  const kmh = (v) => v * 3.6;
+  const clean = (x) => Number(x.toPrecision(6));
+
+  // ---------- Стан ----------
+  const HEIGHTS = [[10, '10 м'], [100, '100 м'], [1000, '1 км'], [4000, '4 км · стрибок'], [39000, '39 км · стратосфера']];
+  const DEFAULT_COMPARE = ['steel', 'basket', 'pingpong', 'rain', 'drizzle', 'a4', 'belly', 'canopy'];
+  const presetById = Object.fromEntries(FF.PRESETS.map((p) => [p.id, p]));
+  let compare = [];      // {key, name, desc, slot}
+  let compareSeq = 0;
+  let loadedPreset = null;
+  let logAxes = true;
+  let last = null;       // останній результат для обраного тіла
+  let lastCmp = [];
+
+  // ---------- Побудова форми ----------
+  const presetSel = $('preset'), shapeSel = $('shape');
+  presetSel.innerHTML = '<option value="">— Власне тіло —</option>' +
+    FF.PRESETS.map((p) => `<option value="${p.id}">${p.name}</option>`).join('');
+  shapeSel.innerHTML = Object.entries(FF.SHAPES).map(([k, s]) => `<option value="${k}">${s.name}</option>`).join('');
+  $('hChips').innerHTML = HEIGHTS.map(([h, l]) => `<button type="button" class="chip" data-h="${h}" aria-pressed="false">${l}</button>`).join('');
+
+  function renderDims(values) {
+    const shape = FF.SHAPES[shapeSel.value];
+    const box = $('dims-box');
+    $('custom-box').hidden = shape.dims.length > 0;
+    if (!shape.dims.length) { box.innerHTML = ''; box.hidden = true; return; }
+    box.hidden = false;
+    const unit = values && values.unit ? values.unit : ($('dimUnit') ? $('dimUnit').value : '0.01');
+    box.innerHTML = shape.dims.map(([k, label]) => `
+      <div class="field">
+        <label for="dim-${k}">${label}</label>
+        <input type="number" id="dim-${k}" data-dim="${k}" step="any" min="0" inputmode="decimal">
+      </div>`).join('') + `
+      <div class="field">
+        <label for="dimUnit">Одиниця розмірів</label>
+        <select id="dimUnit">
+          <option value="0.001">мм</option><option value="0.01">см</option><option value="1">м</option>
+        </select>
+      </div>`;
+    $('dimUnit').value = unit;
+    if (values && values.dims) {
+      for (const [k, v] of Object.entries(values.dims)) {
+        const el = $('dim-' + k);
+        if (el) el.value = clean(v / +unit);
+      }
+    }
+  }
+
+  function pickDimUnit(dims) {
+    const mn = Math.min(...Object.values(dims));
+    return mn < 0.01 ? '0.001' : mn < 1 ? '0.01' : '1';
+  }
+  function pickMassUnit(m) { return m < 1e-3 ? '1e-6' : m < 1 ? '1e-3' : '1'; }
+
+  function loadDesc(desc, presetId) {
+    shapeSel.value = desc.shape;
+    if (desc.shape === 'custom') {
+      renderDims(null);
+      $('cA').value = clean(desc.custom.A);
+      $('cV').value = clean(desc.custom.V);
+    } else {
+      renderDims({ dims: desc.dims, unit: pickDimUnit(desc.dims) });
+    }
+    const mu = pickMassUnit(desc.m);
+    $('massUnit').value = mu;
+    $('mass').value = clean(desc.m / +mu);
+    $('cd').value = desc.Cd;
+    presetSel.value = presetId || '';
+    loadedPreset = presetId ? JSON.stringify(readDesc()) : null;
+  }
+
+  function readNum(id, { allowZero = false, allowNeg = false } = {}) {
+    const el = $(id);
+    const v = parseFloat(el.value);
+    const ok = isFinite(v) && (allowNeg || (allowZero ? v >= 0 : v > 0));
+    el.setAttribute('aria-invalid', ok ? 'false' : 'true');
+    return ok ? v : NaN;
+  }
+
+  function readDesc() {
+    const shape = shapeSel.value;
+    const desc = { shape, m: readNum('mass') * +$('massUnit').value, Cd: readNum('cd') };
+    if (shape === 'custom') {
+      desc.custom = { A: readNum('cA'), V: readNum('cV') };
+    } else {
+      const unit = +$('dimUnit').value;
+      desc.dims = {};
+      for (const [k] of FF.SHAPES[shape].dims) desc.dims[k] = readNum('dim-' + k) * unit;
+    }
+    return desc;
+  }
+
+  function descValid(desc) {
+    const vals = [desc.m, desc.Cd, ...Object.values(desc.dims || desc.custom)];
+    return vals.every((v) => isFinite(v) && v > 0);
+  }
+
+  function readCond() {
+    return { H: readNum('H'), ground: readNum('ground', { allowNeg: true }), v0: readNum('v0', { allowZero: true }) };
+  }
+  function readOpts() {
+    return { isa: $('o-isa').checked, gravity: $('o-gravity').checked, buoyancy: $('o-buoyancy').checked, viscous: $('o-viscous').checked };
+  }
+
+  function bodyName(desc) {
+    if (presetSel.value && loadedPreset === JSON.stringify(desc)) return presetById[presetSel.value].name;
+    return FF.SHAPES[desc.shape].name.split(',')[0] + ', ' + mass(desc.m);
+  }
+
+  // ---------- Кольори з токенів ----------
+  function tokens() {
+    const cs = getComputedStyle(document.documentElement);
+    const g = (n) => cs.getPropertyValue(n).trim();
+    return {
+      ink: g('--ink'), ink2: g('--ink-2'), ink3: g('--ink-3'), line: g('--line'), surface: g('--surface'), ref: g('--ref'),
+      s: [1, 2, 3, 4, 5, 6, 7, 8].map((i) => g('--s' + i)),
+    };
+  }
+
+  // ---------- Графіки ----------
+  const charts = {};
+  function baseOptions(T, xTitle, yTitle, extra = {}) {
+    return {
+      responsive: true, maintainAspectRatio: false, animation: false, parsing: false, normalized: true,
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      plugins: {
+        legend: { position: 'top', align: 'start', labels: { color: T.ink2, boxWidth: 18, boxHeight: 2, padding: 12, font: { size: 12 } } },
+        tooltip: {
+          backgroundColor: T.surface, titleColor: T.ink, bodyColor: T.ink2, borderColor: T.line, borderWidth: 1,
+          padding: 10, boxWidth: 10, boxHeight: 2, usePointStyle: false,
+          callbacks: extra.tooltip || {},
+        },
+      },
+      scales: {
+        x: Object.assign({ type: 'linear', title: { display: true, text: xTitle, color: T.ink3 }, grid: { color: T.line, drawTicks: false }, border: { color: T.line }, ticks: { color: T.ink3, padding: 6, maxTicksLimit: 8 } }, extra.x || {}),
+        y: Object.assign({ type: 'linear', title: { display: true, text: yTitle, color: T.ink3 }, grid: { color: T.line, drawTicks: false }, border: { display: false }, ticks: { color: T.ink3, padding: 6, maxTicksLimit: 7 } }, extra.y || {}),
+      },
+      elements: { point: { radius: 0, hoverRadius: 4, hitRadius: 8 }, line: { borderWidth: 2, tension: 0 } },
+    };
+  }
+  function ds(label, data, color, opts = {}) {
+    return Object.assign({ label, data, borderColor: color, backgroundColor: color, pointHoverBackgroundColor: color, pointHoverBorderColor: color, fill: false }, opts);
+  }
+  function draw(id, datasets, options) {
+    if (!hasChart) return;
+    if (charts[id]) charts[id].destroy();
+    charts[id] = new Chart($(id), { type: 'line', data: { datasets }, options });
+  }
+  function clearCharts() { for (const k of Object.keys(charts)) { charts[k].destroy(); delete charts[k]; } }
+
+  function niceCeil(x) {
+    if (!(x > 0)) return 1;
+    const p = Math.pow(10, Math.floor(Math.log10(x)));
+    const n = x / p;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+  }
+
+  function vacuumSeries(r, cond, n = 120) {
+    const out = [], hOut = [];
+    const g = r.vacuum.g, v0 = cond.v0;
+    for (let i = 0; i <= n; i++) {
+      const t = r.vacuum.t * i / n;
+      out.push({ x: t, y: v0 + g * t });
+      hOut.push({ x: t, y: Math.max(0, cond.H - v0 * t - 0.5 * g * t * t) });
+    }
+    return { v: out, h: hOut };
+  }
+
+  function renderMainCharts(r, cond) {
+    if (!hasChart) return;
+    const T = tokens();
+    const S = r.series;
+    const vac = vacuumSeries(r, cond);
+    const yMax = niceCeil(Math.max(r.vMax.v, r.vtGround) * 1.15);
+    const vFmt = { label: (c) => `${c.dataset.label}: ${num(c.parsed.y, 3)} м/с` };
+    const tTitle = (items) => items.length ? 't = ' + time(items[0].parsed.x) : '';
+    const hTitle = (items) => items.length ? 'h = ' + dist(items[0].parsed.x) : '';
+
+    draw('cVT', [
+      ds('Швидкість v', S.map((p) => ({ x: p.t, y: p.v })), T.s[0]),
+      ds('Гранична v_t на поточній висоті', S.map((p) => ({ x: p.t, y: p.vt })), T.ref, { borderDash: [6, 4], borderWidth: 1.5 }),
+      ds('У вакуумі', vac.v, T.s[1], { borderDash: [2, 3], borderWidth: 1.5 }),
+    ], baseOptions(T, 'Час, с', 'Швидкість, м/с', { y: { min: 0, max: yMax }, x: { min: 0, max: r.tImpact }, tooltip: { title: tTitle, label: vFmt.label } }));
+
+    const vh = [
+      ds('Швидкість v', S.map((p) => ({ x: p.h, y: p.v })), T.s[0]),
+      ds('Гранична v_t(h)', S.map((p) => ({ x: p.h, y: p.vt })), T.ref, { borderDash: [6, 4], borderWidth: 1.5 }),
+    ];
+    if (r.machMax > 0.3) vh.push(ds('Швидкість звуку', S.map((p) => ({ x: p.h, y: p.sound })), T.s[3], { borderDash: [2, 3], borderWidth: 1.5 }));
+    const yMaxVH = r.machMax > 0.3 ? niceCeil(Math.max(r.vMax.v, ...S.map((p) => p.sound)) * 1.05) : yMax;
+    draw('cVH', vh, baseOptions(T, 'Висота над землею, м', 'Швидкість, м/с', { x: { reverse: true, min: 0, max: cond.H }, y: { min: 0, max: yMaxVH }, tooltip: { title: hTitle, label: vFmt.label } }));
+
+    draw('cHT', [
+      ds('Висота з опором', S.map((p) => ({ x: p.t, y: p.h })), T.s[0]),
+      ds('У вакуумі', vac.h, T.s[1], { borderDash: [2, 3], borderWidth: 1.5 }),
+    ], baseOptions(T, 'Час, с', 'Висота над землею, м', { y: { min: 0 }, x: { min: 0, max: r.tImpact }, tooltip: { title: tTitle, label: (c) => `${c.dataset.label}: ${dist(c.parsed.y)}` } }));
+
+    draw('cAcc', [
+      ds('Прискорення a', S.map((p) => ({ x: p.t, y: p.a })), T.s[0]),
+    ], baseOptions(T, 'Час, с', 'Прискорення, м/с²', { x: { min: 0, max: r.tImpact }, tooltip: { title: tTitle, label: (c) => `a = ${num(c.parsed.y, 3)} м/с²` } }));
+    charts.cAcc && (charts.cAcc.options.plugins.legend.display = false, charts.cAcc.update());
+
+    const fds = [
+      ds('Вага m·g', S.map((p) => ({ x: p.t, y: p.W })), T.s[0]),
+      ds('Квадратичний опір', S.map((p) => ({ x: p.t, y: p.Fq })), T.s[1]),
+    ];
+    const o = readOpts();
+    if (o.buoyancy) fds.push(ds('Архімедова сила', S.map((p) => ({ x: p.t, y: p.B })), T.s[2]));
+    if (o.viscous) fds.push(ds('В’язкий опір', S.map((p) => ({ x: p.t, y: p.Fv })), T.s[3]));
+    draw('cF', fds, baseOptions(T, 'Час, с', 'Сила, Н', { y: { min: 0 }, x: { min: 0, max: r.tImpact }, tooltip: { title: tTitle, label: (c) => `${c.dataset.label}: ${num(c.parsed.y, 3)} Н` } }));
+  }
+
+  // ---------- Підсумок ----------
+  const ICON_WARN = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.5 15 14H1L8 1.5Zm0 4a.75.75 0 0 0-.75.75v3.5a.75.75 0 0 0 1.5 0v-3.5A.75.75 0 0 0 8 5.5Zm0 6.25a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8Z"/></svg>';
+
+  function renderSummary(r, cond, desc) {
+    const name = bodyName(desc);
+    if (r.floats) {
+      $('heroV').innerHTML = '0<small>м/с</small>';
+      $('heroKmh').textContent = 'тіло не падає';
+      $('heroText').innerHTML = `<span class="pill crit">${ICON_WARN}Тіло легше за повітря</span>
+        <p>Середня густина тіла <b>${num(r.density, 3)} кг/м³</b> не більша за густину повітря (${num(r.atmGround.rho, 3)} кг/м³ біля землі). Архімедова сила переважає вагу, тож тіло не падає. Збільште масу або зменште об’єм.</p>`;
+      $('stats').innerHTML = '';
+      clearCharts();
+      return;
+    }
+    $('heroV').innerHTML = `${num(r.vtGround, 3)}<small>м/с</small>`;
+    $('heroKmh').textContent = `${num(kmh(r.vtGround), 3)} км/год`;
+
+    const parts = [];
+    parts.push(`<p><span class="body-name">${escapeHtml(name)}</span> перестає розганятися, коли опір повітря зрівнюється з вагою мінус архімедова сила. Біля землі це відбувається на швидкості <b>${num(r.vtGround, 3)} м/с</b>.</p>`);
+    if (r.p95) {
+      parts.push(`<p>95 % граничної швидкості тіло набирає за <b>${time(r.p95.t)}</b>, пролетівши <b>${dist(r.p95.fallen)}</b>. Далі прискорення майже зникає.</p>`);
+    } else {
+      parts.push(`<p>З висоти ${dist(cond.H)} тіло не встигає набрати 95 % граничної швидкості: в момент удару його швидкість ${num(r.vImpact, 3)} м/с, тобто ${num(100 * r.vImpact / r.vtImpact, 3)} % від v<sub>t</sub>.</p>`);
+    }
+    if (r.vMax.v > 1.02 * r.vtImpact && r.vMax.h > 0.02 * cond.H) {
+      parts.push(`<p>На висоті ${dist(r.vMax.h)} швидкість сягає максимуму <b>${num(r.vMax.v, 3)} м/с</b> (${num(kmh(r.vMax.v), 3)} км/год). Це більше за граничну біля землі, бо вгорі повітря рідше. Нижче тіло гальмує.</p>`);
+    }
+    if (r.machMax > 0.8) {
+      parts.push(`<span class="pill warn">${ICON_WARN}Максимальне число Маха ${num(r.machMax, 3)}: біля швидкості звуку Cd зростає, результат наближений</span>`);
+    }
+    $('heroText').innerHTML = parts.join('');
+
+    const pct = (x) => num(100 * x, 3) + ' %';
+    const stats = [
+      ['Гранична швидкість на старті', `${num(r.vtStart, 3)} м/с`, `${num(kmh(r.vtStart), 3)} км/год · h = ${dist(cond.ground + cond.H)} н. р. м.`],
+      ['Швидкість удару об землю', `${num(r.vImpact, 3)} м/с`, `${pct(r.vImpact / r.vtImpact)} від v_t · ${num(kmh(r.vImpact), 3)} км/год`],
+      ['95 % від v_t', r.p95 ? time(r.p95.t) : 'не досягнуто', r.p95 ? `після ${dist(r.p95.fallen)} падіння` : ''],
+      ['99 % від v_t', r.p99 ? time(r.p99.t) : 'не досягнуто', r.p99 ? `після ${dist(r.p99.fallen)} падіння` : ''],
+      ['Максимальна швидкість', `${num(r.vMax.v, 3)} м/с`, `на ${time(r.vMax.t)}, висота ${dist(r.vMax.h)}`],
+      ['Число Маха, максимум', num(r.machMax, 3), r.machMax >= 1 ? 'надзвуковий політ' : 'дозвуковий політ'],
+      ['Час падіння', time(r.tImpact), `у вакуумі ${time(r.vacuum.t)}, ${num(r.vacuum.v, 3)} м/с`],
+      ['Енергія удару', energy(r.energy), `маса ${mass(r.body.m)}`],
+      ['Число Рейнольдса на v_t', num(r.reynolds, 2), `в’язкий опір: ${pct(r.viscousShare)} від сумарного`],
+    ];
+    $('stats').innerHTML = stats.map(([k, v, s]) => `<div class="stat"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join('');
+  }
+  function energy(j) { return j >= 1e6 ? num(j / 1e6, 3) + ' МДж' : j >= 1e3 ? num(j / 1e3, 3) + ' кДж' : num(j, 3) + ' Дж'; }
+  function escapeHtml(s) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+  function renderDerived(desc) {
+    if (!descValid(desc)) { $('derived').innerHTML = ''; return; }
+    const b = FF.bodyProps(desc);
+    const rows = [
+      ['Площа міделя A', num(b.A, 3) + ' м²'],
+      ['Об’єм V', num(b.V, 3) + ' м³'],
+      ['Середня густина', num(b.m / b.V, 3) + ' кг/м³'],
+      ['Cd·A', num(b.Cd * b.A, 3) + ' м²'],
+    ];
+    $('derived').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  }
+
+  // ---------- Порівняння ----------
+  function freeSlot() {
+    const used = new Set(compare.map((c) => c.slot));
+    for (let i = 0; i < 8; i++) if (!used.has(i)) return i;
+    return -1;
+  }
+  function addCompare(name, desc) {
+    const slot = freeSlot();
+    if (slot < 0) return false;
+    compare.push({ key: 'c' + (++compareSeq), name, desc: JSON.parse(JSON.stringify(desc)), slot });
+    return true;
+  }
+  function resetCompare() {
+    compare = [];
+    for (const id of DEFAULT_COMPARE) addCompare(presetById[id].name, presetById[id]);
+  }
+
+  function runCompare(cond, opts) {
+    lastCmp = compare.map((c) => ({ c, r: FF.simulate(c.desc, cond, opts, 600) }));
+    renderCompare(cond);
+  }
+
+  function renderCompare(cond) {
+    const T = tokens();
+    $('compareSub').textContent = `Кожне тіло падає з висоти ${dist(cond.H)} за тих самих умов. Кольори закріплені за тілом.`;
+    $('cmpBody').innerHTML = lastCmp.map(({ c, r }) => {
+      const col = T.s[c.slot];
+      if (r.floats) {
+        return `<tr><td><span class="swatch" style="background:${col}"></span></td><td>${escapeHtml(c.name)}</td><td>${mass(r.body.m)}</td><td>${num(r.body.Cd * r.body.A, 3)}</td><td class="vt" colspan="6">не падає, легше за повітря</td><td><button type="button" class="rm" data-key="${c.key}" aria-label="Прибрати ${escapeHtml(c.name)}">Прибрати</button></td></tr>`;
+      }
+      return `<tr>
+        <td><span class="swatch" style="background:${col}"></span></td>
+        <td>${escapeHtml(c.name)}</td>
+        <td>${mass(r.body.m)}</td>
+        <td>${num(r.body.Cd * r.body.A, 3)}</td>
+        <td class="vt">${num(r.vtGround, 3)}</td>
+        <td>${num(kmh(r.vtGround), 3)}</td>
+        <td>${r.p95 ? time(r.p95.t) : '—'}</td>
+        <td>${r.p95 ? dist(r.p95.fallen) : '—'}</td>
+        <td>${time(r.tImpact)}</td>
+        <td>${num(r.vImpact, 3)}</td>
+        <td><button type="button" class="rm" data-key="${c.key}" aria-label="Прибрати ${escapeHtml(c.name)}">Прибрати</button></td>
+      </tr>`;
+    }).join('') || '<tr><td></td><td colspan="10">Додайте тіла кнопкою «Додати до порівняння».</td></tr>';
+
+    const full = compare.length >= 8;
+    $('addCompare').disabled = full;
+    $('addHint').textContent = full ? 'Порівняння заповнене: приберіть тіло з таблиці, щоб додати інше.' : `До 8 тіл падають з однієї висоти на графіку нижче. Зараз: ${compare.length}.`;
+
+    if (!hasChart) return;
+    const live = lastCmp.filter(({ r }) => !r.floats);
+    const tMin = 0.05;
+    const datasets = live.map(({ c, r }) => ds(c.name,
+      r.series.filter((p) => !logAxes || (p.t >= tMin && p.v > 0)).map((p) => ({ x: p.t, y: p.v })),
+      T.s[c.slot]));
+    const vMins = live.map(({ r }) => r.vtGround);
+    const x = logAxes ? { type: 'logarithmic', min: tMin, ticks: { color: T.ink3, callback: logTick } } : { min: 0 };
+    const y = logAxes ? { type: 'logarithmic', min: Math.pow(10, Math.floor(Math.log10(Math.min(...vMins, 1) * 0.5))), ticks: { color: T.ink3, callback: logTick } } : { min: 0 };
+    draw('cCmp', datasets, baseOptions(T, logAxes ? 'Час, с (логарифмічна шкала)' : 'Час, с', logAxes ? 'Швидкість, м/с (логарифмічна шкала)' : 'Швидкість, м/с', {
+      x, y,
+      tooltip: { title: (items) => items.length ? 't = ' + time(items[0].parsed.x) : '', label: (c) => `${c.dataset.label}: ${num(c.parsed.y, 3)} м/с` },
+    }));
+  }
+  function logTick(v) {
+    const e = Math.log10(v);
+    return Math.abs(e - Math.round(e)) < 1e-9 ? num(v, 1) : '';
+  }
+
+  // ---------- Головний цикл ----------
+  function validCond(cond) {
+    const err = [];
+    if (!isFinite(cond.H)) err.push('висота падіння має бути більшою за нуль');
+    if (!isFinite(cond.ground) || cond.ground < -500 || cond.ground > 10000) { err.push('висота землі — від −500 до 10 000 м'); $('ground').setAttribute('aria-invalid', 'true'); }
+    if (!isFinite(cond.v0)) err.push('початкова швидкість не може бути від’ємною');
+    if (isFinite(cond.H) && isFinite(cond.ground) && cond.H + cond.ground > FF.MAX_ALTITUDE) { err.push('точка старту не може бути вище 80 км над рівнем моря'); $('H').setAttribute('aria-invalid', 'true'); }
+    return err;
+  }
+
+  let condKey = '';
+  function update() {
+    const desc = readDesc();
+    const cond = readCond();
+    const opts = readOpts();
+    renderDerived(desc);
+    document.querySelectorAll('#hChips .chip').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.h === cond.H)));
+
+    const errs = validCond(cond);
+    if (!descValid(desc)) errs.unshift('маса, Cd і розміри тіла мають бути більшими за нуль');
+    $('formError').hidden = !errs.length;
+    $('formError').textContent = errs.length ? 'Перевірте: ' + errs.join('; ') + '.' : '';
+    if (errs.length) { $('addCompare').disabled = true; return; }
+
+    last = { r: FF.simulate(desc, cond, opts), cond, desc };
+    renderSummary(last.r, cond, desc);
+    if (!last.r.floats) renderMainCharts(last.r, cond);
+
+    const key = JSON.stringify([cond, opts]);
+    if (key !== condKey) { condKey = key; runCompare(cond, opts); }
+    else $('addCompare').disabled = compare.length >= 8;
+  }
+
+  let timer = 0;
+  function schedule() { clearTimeout(timer); timer = setTimeout(update, 120); }
+
+  // ---------- Події ----------
+  $('controls').addEventListener('input', (e) => {
+    if (e.target.id === 'preset' || e.target.id === 'shape') return;
+    if (e.target.id === 'dimUnit') return;
+    schedule();
+  });
+  $('controls').addEventListener('change', (e) => {
+    if (e.target.id === 'massUnit') schedule();
+  });
+  $('controls').addEventListener('submit', (e) => e.preventDefault());
+  presetSel.addEventListener('change', () => {
+    const p = presetById[presetSel.value];
+    if (p) { loadDesc(p, p.id); update(); }
+  });
+  shapeSel.addEventListener('change', () => {
+    renderDims(null);
+    $('cd').value = FF.SHAPES[shapeSel.value].Cd;
+    if (shapeSel.value === 'custom' && !$('cA').value) { $('cA').value = 0.5; $('cV').value = 0.05; }
+    FF.SHAPES[shapeSel.value].dims.forEach(([k]) => { $('dim-' + k).value = k === 't' ? 1 : 10; });
+    presetSel.value = '';
+    update();
+  });
+  $('dims-box').addEventListener('change', (e) => { if (e.target.id === 'dimUnit') update(); });
+  $('cdReset').addEventListener('click', () => { $('cd').value = FF.SHAPES[shapeSel.value].Cd; update(); });
+  $('hChips').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-h]');
+    if (!b) return;
+    $('H').value = b.dataset.h;
+    if (+b.dataset.h >= 39000) $('ground').value = Math.min(+$('ground').value || 0, FF.MAX_ALTITUDE - 39000);
+    update();
+  });
+  $('addCompare').addEventListener('click', () => {
+    if (!last || last.r.floats === undefined) return;
+    const desc = readDesc();
+    if (!descValid(desc)) return;
+    if (addCompare(bodyName(desc), desc)) runCompare(last.cond, readOpts());
+  });
+  $('cmpBody').addEventListener('click', (e) => {
+    const b = e.target.closest('.rm');
+    if (!b) return;
+    compare = compare.filter((c) => c.key !== b.dataset.key);
+    lastCmp = lastCmp.filter(({ c }) => c.key !== b.dataset.key);
+    renderCompare(last.cond);
+  });
+  $('logToggle').addEventListener('click', () => {
+    logAxes = !logAxes;
+    $('logToggle').setAttribute('aria-pressed', String(logAxes));
+    if (last) renderCompare(last.cond);
+  });
+  $('resetCompare').addEventListener('click', () => { resetCompare(); if (last) runCompare(last.cond, readOpts()); });
+
+  // Перемальовування при зміні теми
+  function rerender() {
+    if (!last) return;
+    if (!last.r.floats) renderMainCharts(last.r, last.cond);
+    renderCompare(last.cond);
+  }
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', rerender);
+  new MutationObserver(rerender).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  // ---------- Старт ----------
+  if (!hasChart) $('cdnError').hidden = false;
+  else {
+    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+  }
+  $('H').value = 4000;
+  $('ground').value = 0;
+  $('v0').value = 0;
+  loadDesc(presetById.belly, 'belly');
+  resetCompare();
+  update();
+})();
+</script>
+</body>
+</html>
